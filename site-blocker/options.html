@@ -1,101 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div id="options-container">
-    <div class="options-header">
-      <h1>⚙️ Configurações</h1>
-      <p>Gerencie seus bloqueios de sites</p>
-    </div>
-    
-    <div class="options-content">
-      <!-- Add New Site Form -->
-      <div class="form-group">
-        <label class="form-label">Adicionar Novo Bloqueio</label>
-        
-        <!-- Inputs principais -->
-        <div class="input-row">
-          <input 
-            type="text" 
-            id="siteInput" 
-            class="input-field" 
-            placeholder="example.com"
-            maxlength="100"
-          >
-          <input 
-            type="number" 
-            id="blockDuration" 
-            class="input-field input-number" 
-            placeholder="60"
-            min="1"
-            max="9999"
-          >
-        </div>
-        
-        <!-- Descrição -->
-        <div class="form-hint">
-          Deixe em branco para bloqueio temporário | Marque "Permanente" para bloqueio ilimitado
-        </div>
-        
-        <!-- Controles abaixo da descrição -->
-        <div class="form-controls">
-          <div class="checkbox-group">
-            <label class="checkbox-label">
-              <input type="checkbox" id="permanentBlock">
-              <span class="checkbox-custom"></span>
-              <span class="checkbox-text">Bloqueio Permanente</span>
-            </label>
-          </div>
-          <button class="btn" id="addSite">
-            ➕ Adicionar Site
-          </button>
-        </div>
-      </div>
-
-      <!-- Blocked Sites List -->
-      <div class="sites-list">
-        <h3>📋 Sites Bloqueados</h3>
-        <div id="blocked-sites-container">
-          <div id="no-sites" class="no-sites" style="display: none;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <circle cx="12" cy="12" r="10"></circle>
-              <path d="M8 14s1.21 2 4 2 4-2 4-2"></path>
-            </svg>
-            <h3>Nenhum site bloqueado</h3>
-            <p>Adicione sites acima para começar a proteger sua navegação</p>
-          </div>
-          <div id="sites-list"></div>
-        </div>
-      </div>
-
-      <!-- Quick Stats -->
-      <div class="stats-section">
-        <h4>📊 Estatísticas</h4>
-        <div class="stats-grid">
-          <div class="stat-box">
-            <div class="stat-label">Total de Sites</div>
-            <div class="stat-number" id="total-sites">0</div>
-          </div>
-          <div class="stat-box">
-            <div class="stat-label">Permanentes</div>
-            <div class="stat-number" id="permanent-count" style="color: var(--warning-color);">0</div>
-          </div>
-          <div class="stat-box">
-            <div class="stat-label">Temporários</div>
-            <div class="stat-number" id="temporary-count" style="color: var(--success-color);">0</div>
-          </div>
-          <div class="stat-box">
-            <div class="stat-label">Tentativas Hoje</div>
-            <div class="stat-number" id="attempts-today" style="color: var(--primary-color);">0</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
+  <h1>Configurações do Bloqueador</h1>
+  <input type="text" id="siteInput" placeholder="Digite o site (ex: example.com)">
+  <input type="number" id="blockDuration" placeholder="Duração em minutos (0 = permanente)">
+  <button id="addSite">Adicionar</button>
+  <h2>Sites Bloqueados</h2>
+  <ul id="blockedSites"></ul>
   <script src="options.js"></script>
 </body>
 </html>

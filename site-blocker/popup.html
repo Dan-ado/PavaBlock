@@ -1,72 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div id="popup-container">
-    <div class="header">
-      <h1>🚫 Site Blocker</h1>
-      <p>Proteção e foco na web</p>
-    </div>
-    
-    <div class="content" id="popup-content">
-      <!-- Loading State -->
-      <div id="loading-state" class="empty-state">
-        <div class="loading"></div>
-        <h3>Carregando...</h3>
-      </div>
-
-      <!-- Empty State -->
-      <div id="empty-state" class="empty-state" style="display: none;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="15" y1="9" x2="9" y2="15"></line>
-          <line x1="9" y1="9" x2="15" y2="15"></line>
-        </svg>
-        <h3>Nenhum bloqueio ativo</h3>
-        <p>Configure sites para começar a proteger sua navegação</p>
-      </div>
-
-      <!-- Stats Card -->
-      <div id="stats-card" class="stats-card" style="display: none;">
-        <div class="stat-item">
-          <span class="stat-label">📋 Sites Bloqueados</span>
-          <span class="stat-value" id="blocked-count">0</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">📈 Tentativas Hoje</span>
-          <span class="stat-value" id="attempts-today">0</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">📊 Total de Tentativas</span>
-          <span class="stat-value" id="total-attempts">0</span>
-        </div>
-      </div>
-
-      <!-- Recent Attempts -->
-      <div id="recent-section" style="display: none;">
-        <h3 style="margin-bottom: 16px; color: var(--text-primary); font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
-          📝 Histórico de Tentativas
-        </h3>
-        <ul class="attempts-list" id="attempts-list"></ul>
-        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-light);">
-          <button class="btn btn-secondary" id="clear-attempts" style="font-size: 0.85rem; padding: 8px 12px;">
-            🗑️ Limpar Histórico
-          </button>
-        </div>
-      </div>
-
-      <!-- Quick Actions -->
-      <div style="margin-top: 16px;">
-        <button class="btn" id="open-options">
-          ⚙️ Configurar Bloqueios
-        </button>
-      </div>
-    </div>
-  </div>
-
+  <h1>Bloqueador de Sites</h1>
+  <button id="openOptions">Configurar Sites Bloqueados</button>
+  <h2>Tentativas de Acesso</h2>
+  <ul id="attemptsList"></ul>
   <script src="popup.js"></script>
 </body>
 </html>

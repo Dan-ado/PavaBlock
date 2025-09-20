@@ -1,235 +1,83 @@
-// Listen for messages from options page
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === 'updateRules') {
-    updateRules();
-    sendResponse({ success: true });
-  }
-  return true; // Keep message channel open for async response
-});
-
-// Initialize on install/update
+// Inicializa regras de bloqueio ao carregar
 chrome.runtime.onInstalled.addListener(() => {
-  // Default data
-  chrome.storage.local.set({
-    blockedSites: [],
-    attempts: [],
-    notificationsEnabled: true
-  });
   updateRules();
 });
 
-// Update rules function - APRIMORADO
+// Listener para detectar tentativas (navegações para URLs bloqueadas)
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'loading' && tab.url) {
+    const url = new URL(tab.url).hostname;
+    chrome.storage.local.get(['blockedSites', 'attempts'], (data) => {
+      const blockedSites = data.blockedSites || [];
+      const attempts = data.attempts || [];
+
+      const isBlocked = blockedSites.some(site => {
+        if (url.includes(site.url)) {
+          const now = new Date();
+          if (site.expires && now > new Date(site.expires)) {
+            // Remove regra expirada
+            removeExpiredRule(site.url);
+            return false;
+          }
+          // Registra tentativa
+          attempts.push({
+            url: url,
+            timestamp: now.toISOString()
+          });
+          chrome.storage.local.set({ attempts });
+          // Opcional: Mostra notificação de bloqueio
+          chrome.notifications.create({
+            type: 'basic',
+            iconUrl: 'icon.png', // Adicione um ícone se quiser
+            title: 'Site Bloqueado',
+            message: `Acesso a ${url} foi bloqueado.`
+          });
+          return true;
+        }
+        return false;
+      });
+
+      if (isBlocked) {
+        // Impede o carregamento (redireciona para página em branco ou erro)
+        chrome.tabs.update(tabId, { url: 'chrome://newtab/' });
+      }
+    });
+  }
+});
+
+// Função para atualizar regras de bloqueio dinâmicas
 function updateRules() {
   chrome.storage.local.get(['blockedSites'], (data) => {
     const blockedSites = data.blockedSites || [];
     const now = new Date();
-    
-    // Filtra sites ativos (não expirados)
-    const activeSites = blockedSites.filter(site => 
-      !site.expires || new Date(site.expires) > now
-    );
+    const activeRules = blockedSites
+      .filter(site => !site.expires || now <= new Date(site.expires))
+      .map((site, index) => ({
+        id: index + 1,
+        priority: 1,
+        action: { type: 'block' },
+        condition: { urlFilter: `*://${site.url}*`, resourceTypes: ['main_frame'] }
+      }));
 
-    console.log(`🔄 Updating rules: ${activeSites.length} active sites`);
-
-    // Cria regras para declarativeNetRequest
-    const rules = activeSites.map((site, index) => ({
-      id: index + 1,
-      priority: 1,
-      action: { 
-        type: 'redirect',
-        redirect: { url: 'about:blank' }
-      },
-      condition: { 
-        urlFilter: `*://${site.url}*`,
-        resourceTypes: ['main_frame', 'sub_frame']
-      }
-    }));
-
-    // Remove TODAS as regras antigas (1 a 1000)
-    const removeRuleIds = Array.from({ length: 1000 }, (_, i) => i + 1);
-    
     chrome.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: removeRuleIds,
-      addRules: rules
-    }, () => {
-      if (chrome.runtime.lastError) {
-        console.error('❌ Error updating rules:', chrome.runtime.lastError);
-      } else {
-        console.log(`✅ Successfully updated ${rules.length} blocking rules`);
-        
-        // Remove sites expirados do storage
-        if (activeSites.length !== blockedSites.length) {
-          const updatedBlockedSites = activeSites;
-          chrome.storage.local.set({ blockedSites: updatedBlockedSites });
-          console.log(`🧹 Removed ${blockedSites.length - activeSites.length} expired sites`);
-        }
-      }
+      removeRuleIds: activeRules.map(r => r.id), // Remove regras antigas
+      addRules: activeRules
     });
   });
 }
 
-// Track blocked attempts - APRIMORADO com registro completo
-chrome.webNavigation.onBeforeNavigate.addListener((details) => {
-  // Apenas para navegações principais
-  if (details.frameId === 0 && details.type === 'main_frame') {
-    try {
-      const url = new URL(details.url);
-      const hostname = url.hostname.toLowerCase();
-      const fullUrl = details.url;
-
-      chrome.storage.local.get(['blockedSites'], (data) => {
-        const blockedSites = data.blockedSites || [];
-        const now = new Date();
-
-        // Procura pelo site bloqueado (case insensitive)
-        const blockedSite = blockedSites.find(site => 
-          hostname.includes(site.url.toLowerCase()) || 
-          site.url.toLowerCase().includes(hostname)
-        );
-
-        if (blockedSite) {
-          // Verifica se expirou
-          if (blockedSite.expires && now > new Date(blockedSite.expires)) {
-            console.log(`⏰ Site expired: ${blockedSite.url}`);
-            // Remove site expirado
-            const updatedSites = blockedSites.filter(s => s.url !== blockedSite.url);
-            chrome.storage.local.set({ blockedSites: updatedSites }, () => {
-              updateRules();
-            });
-            return;
-          }
-
-          // REGISTRA TENTATIVA COMPLETA - CORRIGIDO
-          chrome.storage.local.get(['attempts'], (data) => {
-            const attempts = data.attempts || [];
-            
-            // Detalhes completos da tentativa
-            const newAttempt = {
-              id: Date.now() + Math.random(), // ID único
-              url: hostname,
-              fullUrl: fullUrl,
-              blockedSite: blockedSite.url,
-              timestamp: now.toISOString(),
-              timestampLocal: now.toLocaleString('pt-BR'),
-              permanent: !blockedSite.expires,
-              duration: blockedSite.duration || 'Permanente',
-              tabId: details.tabId,
-              frameId: details.frameId,
-              type: 'main_frame',
-              userAgent: navigator.userAgent.substring(0, 50) // Primeiros 50 chars
-            };
-            
-            attempts.unshift(newAttempt); // Adiciona no início (mais recente primeiro)
-            
-            // Mantém apenas os últimos 2000 attempts para performance
-            if (attempts.length > 2000) {
-              attempts.splice(2000);
-            }
-            
-            chrome.storage.local.set({ attempts }, () => {
-              console.log(`🚫 Blocked: ${hostname} at ${now.toLocaleString()} (Permanent: ${newAttempt.permanent})`);
-            });
-          });
-
-          // Reforça o bloqueio
-          setTimeout(() => {
-            chrome.tabs.update(details.tabId, { url: 'about:blank' });
-          }, 50);
-          
-          // Mostra notificação
-          showBlockNotification(hostname, blockedSite);
-        }
-      });
-    } catch (error) {
-      console.error('Error processing navigation:', error);
-    }
-  }
-});
-
-// Listener adicional para reforço
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status === 'loading' && tab?.url && tab.url.startsWith('http')) {
-    try {
-      const url = new URL(tab.url);
-      const hostname = url.hostname.toLowerCase();
-
-      chrome.storage.local.get(['blockedSites'], (data) => {
-        const blockedSites = data.blockedSites || [];
-        const now = new Date();
-        
-        const isBlocked = blockedSites.some(site => {
-          const siteMatch = hostname.includes(site.url.toLowerCase()) || 
-                           site.url.toLowerCase().includes(hostname);
-          return siteMatch && (!site.expires || now < new Date(site.expires));
-        });
-
-        if (isBlocked) {
-          console.log(`🔒 Tab reinforcement: blocking ${hostname}`);
-          chrome.tabs.update(tabId, { url: 'about:blank' });
-        }
-      });
-    } catch (error) {
-      // Ignore invalid URLs
-    }
-  }
-});
-
-// Função de notificação aprimorada
-function showBlockNotification(hostname, blockedSite) {
-  chrome.storage.local.get(['notificationsEnabled'], (data) => {
-    const notificationsEnabled = data.notificationsEnabled !== false;
-    
-    if (notificationsEnabled && Notification.permission === 'granted') {
-      const title = '🚫 Site Bloqueado';
-      const message = `Acesso a ${hostname} foi bloqueado.\n` +
-                     `Tipo: ${blockedSite.isPermanent ? 'Permanente' : `Temporário (${blockedSite.duration})`}`;
-      
-      chrome.notifications.create({
-        type: 'basic',
-        iconUrl: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="48" height="48"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>',
-        title: title,
-        message: message,
-        priority: 2,
-        isClickable: true,
-        contextMessage: new Date().toLocaleTimeString('pt-BR')
-      }, (notificationId) => {
-        setTimeout(() => {
-          chrome.notifications.clear(notificationId, () => {});
-        }, 5000);
-      });
-    }
-  });
-}
-
-// Limpeza periódica
-setInterval(() => {
+// Remove regra expirada
+function removeExpiredRule(url) {
   chrome.storage.local.get(['blockedSites'], (data) => {
     const blockedSites = data.blockedSites || [];
-    const now = new Date();
-    const activeSites = blockedSites.filter(site => 
-      !site.expires || new Date(site.expires) > now
-    );
-
-    if (activeSites.length !== blockedSites.length) {
-      chrome.storage.local.set({ blockedSites: activeSites });
-      updateRules();
-      console.log(`🧹 Cleanup: removed ${blockedSites.length - activeSites.length} expired sites`);
-    }
+    const updatedSites = blockedSites.filter(site => site.url !== url);
+    chrome.storage.local.set({ blockedSites: updatedSites }, updateRules);
   });
-}, 30 * 60 * 1000); // 30 minutos
-
-// Inicializa regras e permissões de notificação
-updateRules();
-
-if (chrome.notifications && Notification.permission === 'default') {
-  chrome.notifications.requestPermission();
 }
 
-// Listener para cliques em notificações
-chrome.notifications.onClicked.addListener((notificationId) => {
-  chrome.tabs.create({ 
-    url: chrome.runtime.getURL('options.html'),
-    active: true 
-  });
-  chrome.notifications.clear(notificationId, () => {});
+// Atualiza regras quando storage muda (ex.: ao adicionar site)
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.blockedSites) {
+    updateRules();
+  }
 });
