@@ -29,37 +29,16 @@
         <p>Configure sites para começar a proteger sua navegação</p>
       </div>
 
-      <!-- Stats Card -->
+      <!-- Stats Card (sem tentativas) -->
       <div id="stats-card" class="stats-card" style="display: none;">
         <div class="stat-item">
           <span class="stat-label">📋 Sites Bloqueados</span>
           <span class="stat-value" id="blocked-count">0</span>
         </div>
-        <div class="stat-item">
-          <span class="stat-label">📈 Tentativas Hoje</span>
-          <span class="stat-value" id="attempts-today">0</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">📊 Total de Tentativas</span>
-          <span class="stat-value" id="total-attempts">0</span>
-        </div>
-      </div>
-
-      <!-- Recent Attempts -->
-      <div id="recent-section" style="display: none;">
-        <h3 style="margin-bottom: 16px; color: var(--text-primary); font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
-          📝 Histórico de Tentativas
-        </h3>
-        <ul class="attempts-list" id="attempts-list"></ul>
-        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-light);">
-          <button class="btn btn-secondary" id="clear-attempts" style="font-size: 0.85rem; padding: 8px 12px;">
-            🗑️ Limpar Histórico
-          </button>
-        </div>
       </div>
 
       <!-- Quick Actions -->
-      <div style="margin-top: 16px;">
+      <div style="margin-top: 1em; text-align: center;">
         <button class="btn" id="open-options">
           ⚙️ Configurar Bloqueios
         </button>

@@ -8,7 +8,6 @@ document.addEventListener('DOMContentLoaded', function() {
   const totalSitesEl = document.getElementById('total-sites');
   const permanentCountEl = document.getElementById('permanent-count');
   const temporaryCountEl = document.getElementById('temporary-count');
-  const attemptsTodayEl = document.getElementById('attempts-today');
 
   // Event Listeners
   addSiteBtn.addEventListener('click', addSite);
@@ -140,15 +139,20 @@ document.addEventListener('DOMContentLoaded', function() {
             ${statusText}
           </span>
         </div>
-        <button class="btn-remove" onclick="removeSite('${site.url}', this)">
+        <button class="btn-remove" data-url="${site.url}">
           🗑️ Remover
         </button>
       `;
       sitesList.appendChild(div);
+
+      // Adiciona o evento de clique dinamicamente
+      const removeButton = div.querySelector('.btn-remove');
+      removeButton.addEventListener('click', () => removeSite(site.url, removeButton));
     });
   }
 
   function removeSite(urlToRemove, button) {
+    console.log(`Tentando remover site: ${urlToRemove}`); // Depuração
     // Feedback visual imediato
     button.textContent = '⏳...';
     button.disabled = true;
@@ -159,7 +163,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const blockedSites = data.blockedSites || [];
         const updatedSites = blockedSites.filter(site => site.url !== urlToRemove);
         
+        if (blockedSites.length === updatedSites.length) {
+          console.error(`Site ${urlToRemove} não encontrado para remoção`);
+          showNotification('Erro: Site não encontrado.', 'error');
+          button.textContent = '🗑️ Remover';
+          button.disabled = false;
+          button.style.opacity = '1';
+          return;
+        }
+
         chrome.storage.local.set({ blockedSites: updatedSites }, () => {
+          console.log(`Site ${urlToRemove} removido com sucesso`);
           // Remove o elemento da DOM imediatamente
           const siteItem = button.closest('.site-item');
           if (siteItem) {
@@ -186,27 +200,20 @@ document.addEventListener('DOMContentLoaded', function() {
       button.textContent = '🗑️ Remover';
       button.disabled = false;
       button.style.opacity = '1';
+      console.log(`Remoção de ${urlToRemove} cancelada pelo usuário`);
     }
   }
 
   function updateStats() {
-    chrome.storage.local.get(['blockedSites', 'attempts'], (data) => {
+    chrome.storage.local.get(['blockedSites'], (data) => {
       const blockedSites = data.blockedSites || [];
-      const attempts = data.attempts || [];
-      
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       
       const permanentCount = blockedSites.filter(site => !site.expires).length;
       const temporaryCount = blockedSites.filter(site => site.expires).length;
-      const attemptsToday = attempts.filter(attempt => 
-        new Date(attempt.timestamp) >= today
-      ).length;
 
       totalSitesEl.textContent = blockedSites.length;
       permanentCountEl.textContent = permanentCount;
       temporaryCountEl.textContent = temporaryCount;
-      attemptsTodayEl.textContent = attemptsToday;
     });
   }
 
@@ -259,6 +266,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 3000);
   }
 
-  // Expose removeSite to global scope for onclick handlers
+  // Expose removeSite to global scope (opcional, mas mantido para compatibilidade)
   window.removeSite = removeSite;
 });

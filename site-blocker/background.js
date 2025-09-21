@@ -12,7 +12,6 @@ chrome.runtime.onInstalled.addListener(() => {
   // Default data
   chrome.storage.local.set({
     blockedSites: [],
-    attempts: [],
     notificationsEnabled: true
   });
   updateRules();
@@ -68,7 +67,7 @@ function updateRules() {
   });
 }
 
-// Track blocked attempts - APRIMORADO com registro completo
+// Track blocked attempts - REMOVIDO
 chrome.webNavigation.onBeforeNavigate.addListener((details) => {
   // Apenas para navegações principais
   if (details.frameId === 0 && details.type === 'main_frame') {
@@ -98,38 +97,6 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
             });
             return;
           }
-
-          // REGISTRA TENTATIVA COMPLETA - CORRIGIDO
-          chrome.storage.local.get(['attempts'], (data) => {
-            const attempts = data.attempts || [];
-            
-            // Detalhes completos da tentativa
-            const newAttempt = {
-              id: Date.now() + Math.random(), // ID único
-              url: hostname,
-              fullUrl: fullUrl,
-              blockedSite: blockedSite.url,
-              timestamp: now.toISOString(),
-              timestampLocal: now.toLocaleString('pt-BR'),
-              permanent: !blockedSite.expires,
-              duration: blockedSite.duration || 'Permanente',
-              tabId: details.tabId,
-              frameId: details.frameId,
-              type: 'main_frame',
-              userAgent: navigator.userAgent.substring(0, 50) // Primeiros 50 chars
-            };
-            
-            attempts.unshift(newAttempt); // Adiciona no início (mais recente primeiro)
-            
-            // Mantém apenas os últimos 2000 attempts para performance
-            if (attempts.length > 2000) {
-              attempts.splice(2000);
-            }
-            
-            chrome.storage.local.set({ attempts }, () => {
-              console.log(`🚫 Blocked: ${hostname} at ${now.toLocaleString()} (Permanent: ${newAttempt.permanent})`);
-            });
-          });
 
           // Reforça o bloqueio
           setTimeout(() => {
